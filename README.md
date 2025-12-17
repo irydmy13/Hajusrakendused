@@ -5,11 +5,14 @@
 git clone https://github.com/irydmy13/Hajusrakendused.git
 cd Hajusrakendused
 
-###Install dependencies
+### Install dependencies
+```bash
 npm install
 
-###Start the server
+### Start the server
+```bash
 node app.js
 
-###Open in browser
+### Open in browser
+```bash
 http://localhost:3000
