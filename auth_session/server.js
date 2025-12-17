@@ -1,0 +1,128 @@
+import express from 'express';
+import cors from "cors";
+import session from "express-session";
+
+const app = express();
+const PORT = 3001;
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({extended: true}))
+app.use(cors({
+  origin: 'http://localhost:3001',
+  credentials: true
+}))
+
+app.use(express.static("public"))
+
+/*app.use((req, res, next) => {
+  req.header("Access-Control-Allow-Origin", "http://127.0.0.1:3001")
+  req.header("Access-Control-Allow-Method", "GET, POST, PUT, DELETE, OPTIONS")
+  req.header("Access-Control-Allow-Headers", "Content-Type")
+  req.header("Access-Control-Allow-Credentials", "true")
+})*/
+
+// Mock user database
+const users = [
+  { id: 1, username: "student", password: "demo123" },
+  { id: 2, username: "teacher", password: "teach123" },
+];
+
+app.use(
+  session({
+    secret: 'mysupersecret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // no https
+      maxAge: 1000 * 60 * 15,
+      httpOnly: false // temporary!
+    }
+  })
+)
+
+// Routes
+app.post("/api/login", (req, res) => {
+    const { username, password } = req.body
+
+    console.log(req.body)
+
+    console.log('username', username);
+    console.log('password', password);
+
+    const user = users.find(
+      (u) => u.username === username && u.password === password
+    )
+
+    if (user){
+        // user - found
+        req.session.userId = user.id
+        req.session.username = user.username
+        console.log('user ' + user.username + ' logged in')
+        res.json({
+            success: true,
+            username: user.username,
+            sessionId: req.sessionID
+        })
+
+    } else {
+        // user not found
+        console.log('user not logged in');
+        res.status(401).json({ error: 'invalid credentials' })
+    }
+});
+
+const isAuthenticated = (req, res, next) => {
+  console.log(req.session);
+
+  if (req.session.userId){
+    next()
+  } else {
+    res.status(401).json( { error: "You are not authenticated!"})
+  }
+}
+
+app.get("/api/profile", isAuthenticated, (req, res) => {
+
+  console.log('---');
+  
+  console.log('Profile accessed by ' + req.session.username);
+  res.json({
+    username: req.session.username,
+    userId: req.session.userId,
+    sessionID: req.sessionID
+  })
+})
+
+app.post("/api/logout", (req, res) => {
+  const username = req.session.username
+  req.session.destroy(err => {
+    if (err)
+    {
+      res.status(500).json({error: 'could not logout'})
+    }
+    console.log('User logged out ' + username);
+    res.json({success: true})
+  })
+});
+
+app.get('/api/session', (req, res) => {
+  if (req.session.userId) {
+    res.json({
+      authenticated: true,
+      username: req.session.username
+    })
+  } else {
+    res.json({
+      authenticated: false
+    })
+  }
+})
+
+app.listen(PORT, () => {
+  console.log(`\n=================================`);
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`=================================\n`);
+  console.log("Demo credentials:");
+  console.log("  Username: student | Password: demo123")
+});
